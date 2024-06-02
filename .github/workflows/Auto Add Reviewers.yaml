@@ -1,12 +1,40 @@
 name: Auto Add Reviewers
 
 on:
+  push:
+    branches:
+      - to_merge
+
   pull_request:
     types: [opened, reopened]
 
 jobs:
-  add-reviewers:
+  create-pull-request:
+    if: github.event_name == 'push'
     runs-on: self-hosted
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Check for existing PR
+      id: check_pr
+      run: |
+        PR_EXISTS=$(gh pr list --head ${{ github.ref_name }} --state open --json number --jq '. | length')
+        echo "::set-output name=exists::$PR_EXISTS"
+
+    - name: Create pull request
+      if: steps.check_pr.outputs.exists == '0'
+      run: |
+        gh pr create \
+          --title "Automated PR for changes in ${{ github.ref_name }}" \
+          --body "This PR was created automatically by the GitHub Actions workflow." \
+          --head ${{ github.ref_name }} \
+          --testing_branch
+
+  add-reviewers:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
 
     steps:
     - name: Assign reviewers
