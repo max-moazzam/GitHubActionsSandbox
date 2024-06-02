@@ -1,0 +1,20 @@
+name: Auto Add Reviewers
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  add-reviewers:
+    runs-on: self-hosted
+
+    steps:
+    - name: Assign reviewers
+      run: |
+        curl -s -X POST \
+          -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers \
+          -d '{
+                "reviewers": ["maxmosecondgit"]
+              }'
