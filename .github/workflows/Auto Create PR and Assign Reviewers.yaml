@@ -17,6 +17,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Set up GitHub CLI
+      run: |
+        echo "export GH_TOKEN=${{ secrets.PAT_TOKEN }}" >> $GITHUB_ENV
+
     - name: Check for existing PR
       id: check_pr
       run: |
@@ -33,6 +37,10 @@ jobs:
     runs-on: self-hosted
 
     steps:
+    - name: Set up GitHub CLI
+      run: |
+        echo "export GH_TOKEN=${{ secrets.PAT_TOKEN }}" >> $GITHUB_ENV
+
     - name: Assign reviewers
       run: |
         gh pr review-request add --reviewer maxmosecondgit --repo ${{ github.repository }} --number ${{ github.event.pull_request.number }}
