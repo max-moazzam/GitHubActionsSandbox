@@ -17,6 +17,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Install curl and jq
+      run: |
+        sudo apt-get update && sudo apt-get install -y curl jq
+
     - name: Check for existing PR
       id: check_pr
       run: |
@@ -24,25 +28,22 @@ jobs:
           -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
           -H "Accept: application/vnd.github.v3+json" \
           https://api.github.com/repos/${{ github.repository }}/pulls \
-          -d '{"state":"open","head":"${{ github.ref_name }}"}' | jq -r '. | length')
+          -d '{"state":"open","head":"${{ github.ref }}"}' | jq -r '. | length')
         echo "::set-output name=exists::$PR_EXISTS"
 
     - name: Create pull request
       if: steps.check_pr.outputs.exists == '0'
-      uses: actions/http-client@v2
-      with:
-        url: https://api.github.com/repos/${{ github.repository }}/pulls
-        method: POST
-        headers: |
-          Authorization: token ${{ secrets.PAT_TOKEN }}
-          Accept: application/vnd.github.v3+json
-        body: |
-          {
-            "title": "Automated PR for changes in ${{ github.ref_name }}",
-            "body": "This PR was created automatically by the GitHub Actions workflow.",
-            "head": "${{ github.ref_name }}",
-            "base": "testing_branch"
-          }
+      run: |
+        curl -s -X POST \
+          -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/pulls \
+          -d '{
+                "title": "Automated PR for changes in ${{ github.ref }}",
+                "body": "This PR was created automatically by the GitHub Actions workflow.",
+                "head": "${{ github.ref }}",
+                "base": "testing_branch"
+              }'
 
   add-reviewers:
     if: github.event_name == 'pull_request'
@@ -50,14 +51,11 @@ jobs:
 
     steps:
     - name: Assign reviewers
-      uses: actions/http-client@v2
-      with:
-        url: https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers
-        method: POST
-        headers: |
-          Authorization: token ${{ secrets.PAT_TOKEN }}
-          Accept: application/vnd.github.v3+json
-        body: |
-          {
-            "reviewers": ["maxmosecondgit"]
-          }
+      run: |
+        curl -s -X POST \
+          -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/requested_reviewers \
+          -d '{
+                "reviewers": ["maxmosecondgit"]
+              }'
