@@ -1,4 +1,4 @@
-name: Auto Add Reviewers
+name: Auto Create PR and Assign Reviewers
 
 on:
   push:
@@ -20,21 +20,30 @@ jobs:
     - name: Check for existing PR
       id: check_pr
       run: |
-        PR_EXISTS=$(gh pr list --head ${{ github.ref_name }} --state open --json number --jq '. | length')
+        PR_EXISTS=$(curl -s -X GET \
+          -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/pulls \
+          -d '{"state":"open","head":"${{ github.ref_name }}"}' | jq -r '. | length')
         echo "::set-output name=exists::$PR_EXISTS"
 
     - name: Create pull request
       if: steps.check_pr.outputs.exists == '0'
       run: |
-        gh pr create \
-          --title "Automated PR for changes in ${{ github.ref_name }}" \
-          --body "This PR was created automatically by the GitHub Actions workflow." \
-          --head ${{ github.ref_name }} \
-          --testing_branch
+        curl -s -X POST \
+          -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/pulls \
+          -d '{
+                "title": "Automated PR for changes in ${{ github.ref_name }}",
+                "body": "This PR was created automatically by the GitHub Actions workflow.",
+                "head": "${{ github.ref_name }}",
+                "base": "testing_branch"
+              }'
 
   add-reviewers:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
     - name: Assign reviewers
